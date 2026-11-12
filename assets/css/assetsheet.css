@@ -1,0 +1,8 @@
+img {
+  width: 300px;        
+  height: auto; 
+  box-sizing: border-box;
+  padding: 8px;
+  border: 2px chartreuse       
+}
+
