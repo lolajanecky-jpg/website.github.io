@@ -1,3 +1,9 @@
+/* asset css elements */
+*{
+    box-sizing: border-box;
+}
+
+
 img {
   width: 300px;        
   height: auto; 
