@@ -37,6 +37,7 @@ body {background-color: rgb(0, 117, 117);
 img {
   width: auto;        
   height: auto; 
+  align-items: center;
   box-sizing: border-box;
   padding: 8px;
   border: 2px chartreuse       
