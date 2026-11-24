@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ballet:opsz@16..72&family=Cedarville+Cursive&family=Coral+Pixels&family=IBM+Plex+Serif:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Jacquard+12&family=Kumar+One+Outline&family=Pirata+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/css/pagestyles/deskstyle.css">
+</head>
+<body>
+<main id="desk">
+  
+  <section class="obj nb" id="nb" aria-label="Notebook">
+    <div class="cover"><img src="../../assets/images/objects/notebook-closed.webp" alt="Closed notebook. Click to open."></div>
+    <div class="open">
+      <header class="bar"><span>Notebook</span><button id="close" type="button">Close</button></header>
+      <div class="spread">
+        <div class="page left"><h2>Pages</h2><ol id="list"></ol></div>
+        <div class="page right">
+          <input id="title" placeholder="File name" aria-label="File name" maxlength="60">
+          <textarea id="text" placeholder="Start writing…" aria-label="Page text"></textarea>
+          <div class="foot"><span id="pn"></span><button id="dl" type="button">Download .txt</button></div>
+        </div>
+        <button class="corner prev" id="prev" type="button" aria-label="Previous page" hidden></button>
+        <button class="corner next" id="next" type="button" aria-label="Next page, new page if this is the last"></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="obj deck" id="deck" aria-label="Tarot deck">
+    <div class="deckface">
+    <div class="stack" id="stack"></div>
+    <div class="btns">
+      <button id="shuffle" type="button">Shuffle</button>
+      <button id="draw" type="button">Draw</button>
+      <button id="gather" type="button">Gather</button>
+    </div>
+    </div>
+    <p id="status" aria-live="polite"></p>
+  </section>
+
+  <div class="obj prop coin" id="coin" title="Click to flip"><img src="../../assets/images/objects/coin-queen.webp" alt="Coin"></div>
+  <div class="obj prop" id="pen"><img src="../../assets/images/objects/pen.webp" alt="Pen"></div>
+  <div class="obj prop" id="lighter"><img src="../../assets/images/objects/lighter.webp" alt="Lighter"></div>
+  <div class="obj prop" id="keyring"><img src="../../assets/images/objects/keyring.webp" alt="Keys"></div>
+  <div class="obj prop" id="keycat"><img src="../../assets/images/objects/key-cat.webp" alt="Cat key"></div>
+  <div class="obj sticky" id="sticky"><textarea aria-label="Sticky note" placeholder="Note to self"></textarea></div>
+
+  <p class="hint">Drag anything. Click the notebook to open it, and click a page corner to turn the page.</p>
+</main>
+
+<script>
+/* ---------- dragging ---------- */
+let z = 10;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function makeDraggable(el){
+  el.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.target.closest('textarea,input,button,.corner,#list')) return;
+    const r = el.getBoundingClientRect();
+    const ox = e.clientX - r.left, oy = e.clientY - r.top, sx = e.clientX, sy = e.clientY;
+    let moved = false;
+    el.style.zIndex = ++z;
+    el.setPointerCapture(e.pointerId);
+    const move = ev => {
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return;
+      if (!moved){ // switch from right/bottom anchoring to left/top
+        el.style.right = el.style.bottom = 'auto'; moved = true; el.classList.add('dragging');
+      }
+      const w = el.offsetWidth, h = el.offsetHeight;
+      el.style.left = Math.min(Math.max(ev.clientX - ox, 0), innerWidth - w) + 'px';
+      el.style.top = Math.min(Math.max(ev.clientY - oy, 0), innerHeight - h) + 'px';
+    };
+    const up = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      el.classList.remove('dragging');
+      if (!moved) el.dispatchEvent(new CustomEvent('tap'));
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  });
+}
+document.querySelectorAll('.obj').forEach(makeDraggable);
+
+/* ---------- notebook ---------- */
+const $ = id => document.getElementById(id);
+const nb = $('nb'), title = $('title'), text = $('text');
+let state = { pages:[{title:'',text:''}], i:0 };
+try { const s = JSON.parse(localStorage.getItem('deskNotebook')); if (s && s.pages && s.pages.length) state = s; } catch(e){}
+const save = () => { try { localStorage.setItem('deskNotebook', JSON.stringify(state)); } catch(e){} };
+
+function render(){
+  const p = state.pages[state.i];
+  title.value = p.title; text.value = p.text;
+  $('pn').textContent = `Page ${state.i + 1} of ${state.pages.length}`;
+  $('prev').hidden = state.i === 0;
+  $('list').innerHTML = '';
+  state.pages.forEach((pg, n) => {
+    const li = document.createElement('li');
+    if (n === state.i) li.className = 'on';
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = pg.title || `Untitled ${n + 1}`;
+    b.onclick = () => go(n);
+    li.append(b); $('list').append(li);
+  });
+}
+function flip(page, origin, swap){
+  if (reduce) { swap(); return; }
+  const sign = origin === 'left' ? -1 : 1;
+  const t = d => `perspective(1200px) rotateY(${d}deg)`;
+  page.animate([{transform:t(0)},{transform:t(sign*90)}], {duration:220, easing:'ease-in', fill:'forwards'}).onfinish = () => {
+    swap();
+    page.animate([{transform:t(-sign*90)},{transform:t(0)}], {duration:260, easing:'ease-out'});
+  };
+}
+function go(n){
+  if (n === state.i) return;
+  const dir = n > state.i ? 1 : -1;
+  const target = document.querySelector(dir > 0 ? '.right' : '.left');
+  flip(target, dir > 0 ? 'left' : 'right', () => { state.i = n; render(); save(); });
+}
+title.oninput = () => { state.pages[state.i].title = title.value; save(); const b = $('list').children[state.i]; if (b) b.firstChild.textContent = title.value || `Untitled ${state.i + 1}`; };
+text.oninput = () => { state.pages[state.i].text = text.value; save(); };
+$('next').onclick = () => {
+  if (state.i === state.pages.length - 1) state.pages.push({title:'',text:''});
+  go(state.i + 1);
+  setTimeout(() => text.focus(), 500);
+};
+$('prev').onclick = () => go(state.i - 1);
+$('dl').onclick = () => {
+  const p = state.pages[state.i];
+  const name = (p.title.trim() || `note-${state.i + 1}`).replace(/[\\/:*?"<>|]+/g, '-');
+  const url = URL.createObjectURL(new Blob([p.text], {type:'text/plain;charset=utf-8'}));
+  const a = document.createElement('a'); a.href = url; a.download = name + '.txt';
+  document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+nb.addEventListener('tap', () => {
+  if (nb.classList.contains('is-open')) return;
+  nb.classList.add('is-open');
+  const r = nb.getBoundingClientRect();
+  nb.style.left = Math.max(0, Math.min(r.left, innerWidth - nb.offsetWidth)) + 'px';
+  nb.style.top = Math.max(0, Math.min(r.top, innerHeight - nb.offsetHeight)) + 'px';
+  nb.style.setProperty('--r', '0deg');
+});
+$('close').onclick = () => { nb.classList.remove('is-open'); nb.style.setProperty('--r', '-3deg'); };
+render();
+
+/* ---------- tarot ---------- */
+const cards = [["The Chariot","the-chariot"],["Death","death"],["The Devil","the-devil"],["The Emperor","the-emperor"],["The Empress","the-empress"],["The Fool","the-fool"],["Wheel of Fortune","wheel-of-fortune"],["Justice","justice"],["Judgement","judgement"],["The Hanged Man","the-hanged-man"],["The Hermit","the-hermit"],["The Hierophant","the-hierophant"],["The Lovers","the-lovers"],["The Magician","the-magician"],["The Moon","the-moon"],["The High Priestess","the-high-priestess"],["The Star","the-star"],["Strength","strength"],["The Sun","the-sun"],["Temperance","temperance"],["The Tower","the-tower"],["The World","the-world"],["Ace of Cups","ace-of-cups"],["Two of Cups","two-of-cups"],["Three of Cups","three-of-cups"],["Four of Cups","four-of-cups"],["Five of Cups","five-of-cups"],["Six of Cups","six-of-cups"],["Seven of Cups","seven-of-cups"],["Eight of Cups","eight-of-cups"],["Nine of Cups","nine-of-cups"],["Ten of Cups","ten-of-cups"],["King of Cups","king-of-cups"],["Knight of Cups","knight-of-cups"],["Page of Cups","page-of-cups"],["Queen of Cups","queen-of-cups"],["Ace of Pentacles","ace-of-pentacles"],["Two of Pentacles","two-of-pentacles"],["Three of Pentacles","three-of-pentacles"],["Four of Pentacles","four-of-pentacles"],["Five of Pentacles","five-of-pentacles"],["Six of Pentacles","six-of-pentacles"],["Seven of Pentacles","seven-of-pentacles"],["Eight of Pentacles","eight-of-pentacles"],["Nine of Pentacles","nine-of-pentacles"],["Ten of Pentacles","ten-of-pentacles"],["King of Pentacles","king-of-pentacles"],["Knight of Pentacles","knight-of-pentacles"],["Page of Pentacles","page-of-pentacles"],["Queen of Pentacles","queen-of-pentacles"],["Ace of Swords","ace-of-swords"],["Two of Swords","two-of-swords"],["Three of Swords","three-of-swords"],["Four of Swords","four-of-swords"],["Five of Swords","five-of-swords"],["Six of Swords","six-of-swords"],["Seven of Swords","seven-of-swords"],["Eight of Swords","eight-of-swords"],["Nine of Swords","nine-of-swords"],["Ten of Swords","ten-of-swords"],["King of Swords","king-of-swords"],["Knight of Swords","knight-of-swords"],["Page of Swords","page-of-swords"],["Queen of Swords","queen-of-swords"],["Ace of Wands","ace-of-wands"],["Two of Wands","two-of-wands"],["Three of Wands","three-of-wands"],["Four of Wands","four-of-wands"],["Five of Wands","five-of-wands"],["Six of Wands","six-of-wands"],["Seven of Wands","seven-of-wands"],["Eight of Wands","eight-of-wands"],["Nine of Wands","nine-of-wands"],["Ten of Wands","ten-of-wands"],["King of Wands","king-of-wands"],["Knight of Wands","knight-of-wands"],["Page of Wands","page-of-wands"],["Queen of Wands","queen-of-wands"]].map(([name, f]) => ({name, src:`../../assets/images/cards/${f}.webp`}));
+
+let deck = [], drawn = [];
+const stack = $('stack'), status = $('status');
+for (let k = 0; k < 6; k++){ const c = document.createElement('div'); c.className = 'c'; c.style.transform = `translate(${k * -.6}px,${k * -.8}px)`; stack.append(c); }
+
+function reshuffleData(){
+  deck = cards.map((_, i) => i).filter(i => !drawn.includes(i));
+  for (let i = deck.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+}
+function updateCount(msg){
+  stack.classList.toggle('empty', deck.length === 0);
+  status.textContent = msg || `${deck.length} cards`;
+}
+function shuffleAnim(){
+  if (reduce) return;
+  [...stack.children].forEach((c, k) => {
+    const base = c.style.transform, dx = (k % 2 ? -1 : 1) * 70;
+    c.animate([{transform:base},{transform:`translate(${dx}px,${k * -4}px) rotate(${dx / 7}deg)`},{transform:base}],
+      {duration:650, delay:k * 70, easing:'ease-in-out'});
+  });
+}
+$('shuffle').onclick = () => { reshuffleData(); shuffleAnim(); updateCount(`Shuffled. ${deck.length} cards`); };
+$('draw').onclick = () => {
+  if (!deck.length){ updateCount('The deck is empty. Gather the cards to start again.'); return; }
+  const idx = deck.pop();
+  drawn.push(idx);
+  const dr = $('deck').getBoundingClientRect(), n = drawn.length - 1, d = cards[idx];
+  const c = document.createElement('div');
+  c.className = 'obj card';
+  c.style.setProperty('--r', (Math.random() * 10 - 5) + 'deg');
+  c.innerHTML = `<div class="inner"><div class="face back"><img src="../../assets/images/cards/back.webp" alt="Card back"></div><div class="face front"><img src="${d.src}" alt="${d.name}"></div></div>`;
+  c.style.left = dr.left + 10 + 'px'; c.style.top = dr.top + 10 + 'px'; c.style.zIndex = ++z;
+  $('desk').append(c); makeDraggable(c);
+  c.addEventListener('tap', () => {
+    c.classList.toggle('up');
+    if (c.classList.contains('up')) updateCount(d.name);
+  });
+  let x = dr.right + 20 + (n % 5) * 40;
+  if (x > innerWidth - 185) x = Math.max(10, dr.left - 185 - (n % 5) * 40);
+  const y = Math.min(dr.top + (n % 3) * 16, innerHeight - 295);
+  requestAnimationFrame(() => {
+    c.classList.add('landing');
+    c.style.left = x + 'px'; c.style.top = y + 'px';
+    setTimeout(() => c.classList.remove('landing'), 500);
+  });
+  updateCount(`Drew a card. ${deck.length} left. Click it to turn it over.`);
+};
+$('gather').onclick = () => {
+  document.querySelectorAll('.card').forEach(c => c.remove());
+  drawn = []; reshuffleData(); shuffleAnim(); updateCount(`All ${cards.length} cards gathered and shuffled`);
+};
+reshuffleData(); updateCount();
+
+/* ---------- coin ---------- */
+const coin = $('coin'); let heads = true;
+coin.addEventListener('tap', () => {
+  heads = Math.random() < .5;
+  coin.classList.remove('spin'); void coin.offsetWidth; coin.classList.add('spin');
+  setTimeout(() => coin.querySelector('img').src = heads ? '../../assets/images/objects/coin-queen.webp' : '../../assets/images/objects/coin-bear.webp', 250);
+});
+</script>
+</body>
+</html>

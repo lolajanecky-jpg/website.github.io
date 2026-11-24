@@ -1,0 +1,84 @@
+:root{
+  --walnut:#4a3022; --walnut-dark:#2e1d15; --felt:#234236; --ink:#1f2f4d;
+  --paper:#f1ecde; --brass:#c2973f; --plum:#2b1b3d;
+  --hand: "Cedarville Cursive"; --serif:"IBM Plex Serif", serif; --ballet:"Ballet",cursive;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;touch-action:none}
+body{
+  background:#4a3022 url(../../images/desk.webp) center/cover no-repeat;
+  font-family:var(--serif); color:#fff;
+}
+#desk{position:fixed;inset:0}
+.hint{position:absolute;left:16px;bottom:12px;margin:0;font-size:15px;color:#fff;text-shadow:0 1px 3px #000;pointer-events:none}
+
+/* shared draggable behaviour */
+.obj{position:absolute;transform:rotate(var(--r,0deg));cursor:grab;user-select:none;-webkit-user-select:none;transition:box-shadow .15s}
+.obj.dragging{cursor:grabbing;filter:drop-shadow(0 14px 12px rgba(0,0,0,.45))}
+.landing{transition:left .45s ease-out,top .45s ease-out}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+
+/* notebook */
+.nb .cover{display:block;width:325px;filter:drop-shadow(0 10px 14px rgba(0,0,0,.5))}
+.nb .cover img{display:block;width:100%;pointer-events:none}
+.nb .open{display:none;width:min(94vw,760px)}
+.nb.is-open .open{display:block}
+.nb.is-open .cover{display:none}
+.bar{display:inline-flex;gap:10px;align-items:center;margin-bottom:6px;background:rgba(30,20,14,.8);color:#fff;border-radius:6px;padding:3px 6px 3px 12px;font-size:18px;font-family: var(--hand);}
+.bar button{background:none;border:1px solid #fff;color:#fff;border-radius:4px;padding:1px 10px}
+.spread{position:relative;aspect-ratio:1500/1293;background:url(../../images/objects/notebook-open.webp) center/100% 100% no-repeat;color:#2a2a35;filter:drop-shadow(0 12px 16px rgba(0,0,0,.5))}
+.page{position:absolute;top:6%;height:86%;display:flex;flex-direction:column;min-width:0;min-height:0}
+.left{left:4%;width:41%;transform-origin:right center}
+.right{left:55%;width:40%;transform-origin:left center;backface-visibility:hidden}
+.left h2{margin:0 0 6px;font-size:22px;color:#1f2f4d;font-family: var(--hand);}
+.left ol{margin:0;padding:0 0 0 22px;overflow:auto;font-family:var(--hand);font-size:22px;line-height:1.25}
+.left li button{background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left}
+.left li.on button{font-weight:700;text-decoration:underline wavy var(--brass)}
+#title{border:0;border-bottom:2px solid #1f2f4d;background:transparent;font:500 26px var(--hand);color:#1f2f4d;padding:0 0 2px;margin-bottom:6px}
+#text{flex:1;min-height:0;resize:none;border:0;background:transparent;font:500 22px/28px var(--hand);color:#222;padding:0}
+#title:focus-visible,#text:focus-visible{outline:none;background-color:rgba(194,151,63,.12)}
+.foot{display:flex;justify-content:space-between;align-items:center;font-size:15px;padding-right:44px;font-family: var(--hand);}
+.foot button{background:#1f2f4d;color:#fff;border:0;border-radius:4px;padding:3px 10px}
+.corner{position:absolute;bottom:2%;width:36px;height:36px;border:0;padding:0;transition:width .15s,height .15s}
+.corner:hover,.corner:focus-visible{width:58px;height:58px}
+.corner.next{right:3%;background:linear-gradient(135deg,transparent 50%,#cfc6ad 50%,#fffaf0);box-shadow:-3px -3px 6px rgba(0,0,0,.18)}
+.corner.prev{left:3%;background:linear-gradient(225deg,transparent 50%,#cfc6ad 50%,#fffaf0);box-shadow:3px -3px 6px rgba(0,0,0,.18)}
+.corner.prev[hidden]{display:none}
+@media (max-width:620px){.left{display:none}.right{left:52%;width:44%}.left h2{font-size:18px}#text,#title{font-size:18px}}
+
+/* tarot */
+.deck{width:185px;text-align:center;padding:10px}
+.deckface{position:relative;width:165px;height:285px;margin:0 auto 10px}
+.stack{position:relative;width:165px;height:285px}
+.stack .c{position:absolute;inset:0;background:url(../../images/cards/back.webp) center/100% 100%;border-radius:7px;box-shadow:0 2px 4px rgba(0,0,0,.5)}
+.stack.empty{opacity:.2}
+.deck .btns{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.deck button{background:transparent;border:0;color:#87fdff;padding:2px 2px;font-size:30px;font-family: var(--ballet);text-shadow:0 0 4px #000,0 1px 3px #000,0 0 10px #000}
+.deck button:hover{text-decoration:underline}
+.deck p{margin:6px 0 0;font-size:16px;min-height:2.6em;color:#fff;text-shadow:0 1px 3px #000}
+.card{width:165px;height:285px;perspective:700px}
+.card .inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s}
+.card.up .inner{transform:rotateY(180deg)}
+.card .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,.55)}
+.card img{display:block;width:100%;height:100%;border-radius:7px;pointer-events:none}
+.card .front{transform:rotateY(180deg)}
+
+/* props */
+.prop img{display:block;width:100%;pointer-events:none;filter:drop-shadow(0 6px 6px rgba(0,0,0,.5))}
+.coin{width:84px}
+.coin.spin img{animation:toss .5s}
+@keyframes toss{50%{transform:scaleX(.05)}}
+.sticky{width:150px;height:150px;background:#f6e58d;box-shadow:0 6px 10px rgba(0,0,0,.4);padding:10px}
+.sticky textarea{width:100%;height:100%;border:0;background:transparent;resize:none;font:500 16px/1.1 var(--hand);color:#3a3320;cursor:text}
+@media (prefers-reduced-motion:reduce){.card .inner,.landing{transition:none}.coin.spin img{animation:none}}
+
+/* starting positions */
+#nb{left:6vw;top:12vh;--r:-3deg}
+#deck{right:8vw;top:14vh;--r:2deg}
+#coin{left:44vw;top:66vh;--r:10deg}
+#pen{left:26vw;top:70vh;width:220px;--r:-8deg}
+#lighter{left:34vw;top:20vh;width:150px;--r:6deg}
+#keyring{left:58vw;top:72vh;width:180px;--r:-14deg}
+#keycat{left:70vw;top:48vh;width:64px;--r:20deg}
+#sticky{left:52vw;top:14vh;--r:4deg}
